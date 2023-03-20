@@ -78,7 +78,7 @@
                         </td>
 
                         <td class="p-4 text-sm whitespace-nowrap">
-                            {{ item.detail.length }}
+                            coba ganti : {{ item.detail }}
                         </td>
                         
 
