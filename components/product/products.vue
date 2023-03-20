@@ -1,0 +1,1081 @@
+<template>
+    <div class="md:ml-64 px-10 text-gray-700">
+        <!-- loading overlay -->
+        <Loading v-if="loadingOverlay == true"/>
+
+        <!-- top bar -->
+        <div class="flex items-center justify-between py-7" >
+            <div>
+                <h1 class="text-2xl font-semibold leading-relaxed text-gray-800 ">
+                    {{ headMenu?.name }}
+                </h1>
+                <p class="text-sm font-medium text-gray-500 ">
+                    {{ headMenu?.keterangan }}
+                </p>
+            </div>
+            <TButton v-if="headMenu?.name != 'Dashboard'" @click="openModalAdd()">
+                <Icon name="carbon:add-alt" size="24" />
+                <span class="text-sm font-semibold">
+                    Tambah {{ headMenu?.name }}
+                </span>
+            </TButton>
+        </div>
+        
+        <!-- filter and search -->
+        <div class="flex gap-x-2 h-18 items-center rounded-lg bg-gray-800">
+            <div class="w-52 flex justify-center items-center">
+                <button @click="searchData(1, totalData, searchField)" class="flex gap-x-2 items-center py-5 px-6 text-gray-200 border-r-4 border-stone-50 hover:text-sky-600 relative group">
+                    <Icon name="carbon:search-locate" size="20" />
+                    <span class="text-sm font-medium">Cari Produk</span>
+                    <span class="absolute w-full h-0.5 bg-sky-600 rounded bottom-0 left-0 scale-x-0 group-hover:scale-x-100 transition-transform ease-in-out"></span>
+                </button>
+            </div>
+            <div class="w-full flex items-center">
+                <FormKit
+                type="search"
+                placeholder="Cari berdasarkan nama produk disini . . . "
+                v-model="searchField" 
+                @keydown.enter="searchData(1, totalData, searchField)" 
+                @keydown.tab="searchData(1, totalData, searchField)"
+                @blur="searchData(1, totalData, searchField)"
+                :classes = "{
+                    inner : '$reset formkit-inner formkit-disabled:bg-gray-200 formkit-disabled:cursor-not-allowed formkit-disabled:pointer-events-none flex items-center w-full focus-within:ring-blue-500 focus-within:ring-2 [&>label:first-child]:focus-within:text-blue-500 rounded',
+                    outer :'$reset w-full pr-6 pl-3 formkit-outer formkit-disabled:opacity-50',
+                    input : '$reset formkit-input appearance-none bg-transparent focus:outline-none focus:ring-0 focus:shadow-none w-full px-3 py-2 border-none text-base text-gray-100 placeholder-gray-400'
+                }"
+            />
+            </div>
+            
+        </div>
+
+        <!-- table -->
+        <div class="overflow-auto py-6">
+            <table class="w-full">
+                <thead>
+                    <tr class="text-sm font-medium border-b border-gray-200">
+                        <td class="py-5 font-semibold whitespace-nowrap">KETERANGAN PRODUK</td>
+                        <td class="w-40 py-5  px-4 font-semibold text-center whitespace-nowrap">HARGA (Rp.)</td>
+                        <td class="w-40 py-5  px-4 font-semibold text-center whitespace-nowrap">STOK</td>
+                        <td class="py-5 px-4 font-semibold text-center whitespace-nowrap">KATEGORI</td>
+                        <td class="py-5 px-4 font-semibold text-center whitespace-nowrap">ACTION</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in products" :key="index" class="border-b">
+                        <td class="flex gap-x-4 items-center py-2 whitespace-nowrap">
+                            <nuxt-img :src="item.foto != '' ? urlHostApi + item.foto : '/img/placeholder.jpg'" alt="" class="w-16 aspect-[2/3] rounded-lg object-cover object-center " loading="lazy"/>
+                            <div>
+                                <div class="pb-2">
+                                    <span class="text-xs py-1 px-2 font-semibold bg-sky-200 bg-opacity-30 text-sky-600 rounded-md">
+                                        {{ item.kode_produk }}
+                                    </span>
+                                </div>
+                                <span class="text-base font-semibold tracking-wide">
+                                {{ item.nama_produk }}
+                                </span>
+                                <div v-if="item.stok_baru < 10 " class="text-xs text-gray-600 pt-2">
+                                    <p>Status : <span class="text-red-400">stok kurang dari 10 pcs (bersiap order) </span></p> 
+                                </div>
+                                <div v-else class="text-xs text-gray-500 pt-2">
+                                    Status : <span class="text-teal-600">stok lebih dari 10 pcs</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4 whitespace-nowrap text-center">
+                            <ClientOnly>
+                                {{new Intl.NumberFormat().format(item.harga_baru)}}
+                            </ClientOnly>
+                            <!-- {{ Number(item.harga).toLocaleString() }} -->
+                            <!-- {{ item.harga }} -->
+                        </td>
+                        <td class="p-4 whitespace-nowrap text-center">
+                            <span class="text-base py-1 px-3 font-semibold rounded-md" :class="item.stok_baru < 10 ? 'bg-red-200 bg-opacity-30 text-red-700' : 'bg-teal-200 bg-opacity-30 text-teal-700'" >
+                                {{ item.stok_baru }}
+                            </span>
+                        </td>
+                        <td class="p-4 whitespace-nowrap text-center">
+                            {{ item.kategori_produk != null ? item.kategori_produk.nama_kategori : '' }}
+                        </td>
+                        <td class="p-4 whitespace-nowrap text-center">
+                            <div class="flex gap-x-2 justify-center">
+                                <button @click="openModalDetail(item)" class="py-2 px-2 font-semibold rounded-md bg-sky-200 bg-opacity-30 text-sky-700 hover:bg-opacity-60">
+                                    <Icon name="carbon:cube-view" size="24" />
+                                </button>
+                                <button @click="openModalEdit(item)" class="py-2 px-2 font-semibold rounded-md bg-yellow-200 bg-opacity-30 text-yellow-700 hover:bg-opacity-60">
+                                    <Icon name="carbon:edit" size="24" />
+                                </button>
+                                <button @click="openModalDelete(item)" class="py-2 px-2 font-semibold rounded-md bg-red-200 bg-opacity-30 text-red-700 hover:bg-opacity-60">
+                                    <Icon name="carbon:trash-can" size="24" />
+                                </button>
+                            </div>
+                        </td>
+                        
+                    </tr>
+                </tbody>  
+            </table>
+            <div v-if="products.length == 0" colspan="5" class="w-full px-2 py-5 bg-opacity-30 text-yellow-700 flex justify-center items-center gap-x-2">
+                <span class="font-medium"><Icon name="carbon:warning-hex-filled" size="24" /></span>
+                <span class="font-medium">Data tidak ditemukan </span>
+            </div>  
+
+            <div class="flex justify-between items-start pt-4 pb-2">
+                <div class="flex items-center">
+                    <p class="text-sm">
+                        <span class="font-semibold text-sky-600  ">{{ currentPage }}</span> / {{ pages }} pages <span class="text-white bg-gray-800 rounded-lg text-xs font-semibold px-2 py-1 "> {{ totalData }} data </span>
+                    </p>
+                </div>
+                <FormKit
+                    v-model="optionPages"
+                    @change="clickPage(1, optionPages, searchField)"
+                    type="select"
+                    :classes="{
+                        inner : '$reset formkit-inner border formkit-disabled:bg-gray-200 formkit-disabled:cursor-not-allowed formkit-disabled:pointer-events-none flex  items-center rounded-lg'
+                    }"
+                    :options="[
+                        { label: '10', value: 10, },
+                        { label: '25', value: 25, },
+                        { label: '50', value: 50, },    
+                        { label: '75', value: 75 },
+                        { label: '100', value: 100, }
+                    ]"
+                />
+            </div>
+
+            <div class="flex gap-x-3 justify-center">
+                <button class="flex items-center justify-center font-semibold w-8 h-8 hover:text-sky-600"  @click="clickPage(1, optionPages, searchField)">
+                    <Icon name="carbon:chevron-left" size="28" />
+                </button>
+                <button v-for="page in displayPages" class="flex items-center justify-center w-8 h-8 font-medium rounded-full" :class="page == currentPage ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-sky-600'" @click="clickPage(page, optionPages, searchField)">
+                    {{ page }}
+                </button>
+                <button class="flex items-center justify-center font-semibold w-8 h-8 hover:text-sky-600" @click="clickPage(pages, optionPages, searchField)">
+                    <Icon name="carbon:chevron-right" size="28" />
+                </button>
+            </div>
+
+            
+        </div>
+
+        <!-- collection of modals -->
+
+        <!-- modal for insert & update -->
+        <ClientOnly>  
+            <HeadlessDialog :open="isOpenAdd == true" class="relative z-50">
+                <!-- The backdrop, rendered as a fixed sibling to the panel container -->
+                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
+
+                <!-- Full-screen container to center the panel -->
+                <div class="fixed inset-0 flex items-center justify-center p-4">
+                <!-- The actual dialog panel -->
+                <HeadlessDialogPanel class="w-full max-w-2xl px-12 py-8 rounded-lg bg-white text-gray-700">
+                    <HeadlessDialogTitle class="pb-3">
+                        <h3 v-if="!btnEdit" class="text-xl font-semibold text-sky-600 border-b-2 pb-4">
+                            Tambah {{ headMenu?.name }} baru
+                        </h3>
+                        <h3 v-if="btnEdit" class="text-xl font-semibold text-yellow-600 border-b-2 pb-4">
+                            Edit Data {{ headMenu?.name }}
+                        </h3>
+                    </HeadlessDialogTitle>
+                        <div class="grid grid-cols-1 w-full">
+                            <FormKit
+                                type="text"
+                                label="Nama Produk"
+                                placeholder=". . ."
+                                validation="required|length:3"
+                                v-model="nama_produk"
+                                :classes="{
+                                    label : 'font-semibold text-sm tracking-wide pb-2',
+                                    inner : '$reset formkit-inner formkit-disabled:bg-gray-200 formkit-disabled:cursor-not-allowed formkit-disabled:pointer-events-none flex items-center max-w-full border focus-within:ring-sky-500 focus-within:ring-2 [&>label:first-child]:focus-within:text-blue-500 rounded-lg mb-1',
+                                }"
+                                :validation-visibility="errMsg"
+                            />
+                        </div>
+
+                        <div v-if="!btnEdit" class="grid grid-cols-2 gap-x-4 pt-1 w-full">
+                            <FormKit
+                                type="number"
+                                label="Harga Produk"
+                                placeholder=". . ."
+                                validation="*required|*number|length:3"
+                                v-model="harga_baru"
+                                :classes="{
+                                    label : 'font-semibold text-sm tracking-wide pb-2',
+                                    inner : '$reset formkit-inner formkit-disabled:bg-gray-200 formkit-disabled:cursor-not-allowed formkit-disabled:pointer-events-none flex items-center max-w-full border focus-within:ring-sky-500 focus-within:ring-2 [&>label:first-child]:focus-within:text-blue-500 rounded-lg mb-1',
+                                }"
+                                :validation-visibility="errMsg"
+                            />
+                            <FormKit
+                                type="number"
+                                label="Stok Produk"
+                                placeholder=". . ."
+                                validation="required|number"
+                                v-model="stok_baru"
+                                :classes="{
+                                    label : 'font-semibold text-sm tracking-wide pb-2',
+                                    inner : '$reset formkit-inner formkit-disabled:bg-gray-200 formkit-disabled:cursor-not-allowed formkit-disabled:pointer-events-none flex items-center max-w-full border focus-within:ring-sky-500 focus-within:ring-2 [&>label:first-child]:focus-within:text-blue-500 rounded-lg mb-1',
+                                }"
+                                :validation-visibility="errMsg"
+
+                            />
+                        </div>
+                        
+                        <div class="pb-3 pt-1">
+                            <h3 class="font-semibold text-sm tracking-wide pb-3">
+                                Kategori Produk
+                            </h3>
+                            <div class="grid grid-cols-3 gap-x-5 items-center border rounded-lg p-4 w-full">
+                                <TButton @click="openModalCategory()">
+                                    <Icon name="carbon:add-alt" size="24" />
+                                    <span class="text-sm font-semibold tracking-wide ">
+                                        Pilih Kategori
+                                    </span>
+                                </TButton>
+                                <div class="flex gap-x-3 col-span-2 col-start-2 px-5 border-l-2 h-full items-center">
+                                    <span class="text-xs py-1 px-3 font-semibold rounded-md" :class="kode_kategori == '' ? 'bg-white' : 'bg-teal-200 bg-opacity-30 text-teal-700'" >
+                                        {{ kode_kategori }}
+                                    </span>
+                                    <h3 class="font-semibold tracking-wide text-sm uppercase">
+                                        {{ nama_kategori }}
+                                    </h3>
+                                </div>
+                            </div>
+                            <span v-if="kategori_produk == ''" class="text-xs pt-1 text-red-500">
+                                kategori produk is required
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 w-full py-3"> 
+                            <label class="font-semibold text-sm tracking-wide pb-2" for="file1">Foto Produk</label>
+                            <div v-if="imgEdit" class="flex items-start gap-x-4">
+                                <nuxt-img :src="foto != '' ? urlHostApi + foto : '/img/placeholder.jpg'" alt="" class="w-20 aspect-[2/3] rounded-lg object-cover object-center " loading="lazy"/>
+                                <TButton @click="(() => {imgEdit = false})">
+                                    <Icon name="carbon:reset" size="24" />
+                                    <span class="text-sm font-semibold tracking-wide ">
+                                        Ganti Gambar
+                                    </span>
+                                </TButton>
+                            </div>
+                            
+                            <input v-if="!imgEdit" type="file" 
+                                @change = "selectFoto"
+                                ref="file1"
+                                name="file1"
+                                id="file1"
+                                class="flex justify-center items-center rounded-lg border cursor-pointer p-4 file:bg-sky-200 file:text-sky-600 file:mr-6 file:text-sm file:cursor-pointer file:rounded-lg file:px-6 file:py-3 file:bg-opacity-30 file:border-none file:font-semibold"
+                            >
+                            <span v-if="!imgEdit" class="text-xs pt-1 text-gray-500">
+                                Gambar tidak harus diisi, bisa diupdate nanti
+                            </span>
+                            
+                        </div>
+                        <div class="flex gap-x-4 justify-end border-t-2 pt-4 mt-3">
+                            
+                            <TButton class="gray" @click="cancelDataProduct()">
+                                <Icon name="carbon:close-outline" size="24" />
+                                <span class="text-sm font-semibold tracking-wide ">
+                                    Batal
+                                </span>
+                            </TButton>
+
+                            <TButton v-if="!btnEdit" @click="saveDataProduct()">
+                                <Icon name="carbon:save" size="24" />
+                                <span class="text-sm font-semibold tracking-wide ">
+                                    Simpan
+                                </span>
+                            </TButton>
+
+                            <TButton v-if="btnEdit" @click="saveEditProduct()">
+                                <Icon name="carbon:save" size="24" />
+                                <span class="text-sm font-semibold tracking-wide ">
+                                    Edit
+                                </span>
+                            </TButton>
+                            
+                        </div>
+                        
+                    <!-- ... -->
+                </HeadlessDialogPanel>
+                </div>
+            </HeadlessDialog>
+        </ClientOnly>
+
+        <!-- modal for delete -->
+        <ClientOnly>  
+            <HeadlessDialog :open="isOpenDelete == true" class="relative z-50">
+                <!-- The backdrop, rendered as a fixed sibling to the panel container -->
+                <div class="fixed inset-0 bg-black/80" aria-hidden="true" />
+
+                <!-- Full-screen container to center the panel -->
+                <div class="fixed inset-0 flex items-center justify-center p-4">
+                <!-- The actual dialog panel -->
+                <HeadlessDialogPanel class="w-full max-w-md px-12 py-8 rounded-lg bg-stone-100 text-gray-700">
+                    <HeadlessDialogTitle class="pb-3">
+                        <h3 class="text-xl font-semibold text-red-600 border-b-2 pb-4">
+                            Hapus Produk
+                        </h3>
+                    </HeadlessDialogTitle>
+                        <h3 class="text-md font-semibold tracking- pb-3">
+                            Apakah anda yakin akan menghapus data ini?
+                        </h3>
+                        <div class="flex items-center gap-x-4">
+                            <nuxt-img :src="foto != '' ? urlHostApi + foto : '/img/placeholder.jpg'" alt="" class="w-20 aspect-[2/3] rounded-lg object-cover object-center " loading="lazy"/>
+                            <div>
+                                <div class="pb-2">
+                                    <span class="text-xs py-1 px-2 font-semibold bg-sky-200 bg-opacity-30 text-sky-600 rounded-md">
+                                        {{ kode_produk }}
+                                    </span>
+                                </div>
+                                <span class="text-base font-semibold tracking-wide">
+                                    {{ nama_produk }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-x-2 justify-end border-t-2 pt-4 mt-6">
+                            <TButton class="gray" @click="cancelDataProduct()">
+                                <Icon name="carbon:close-outline" size="24" />
+                                <span class="text-sm font-semibold tracking-wide ">
+                                    Batal
+                                </span>
+                            </TButton>
+                            <TButton class="danger" @click="saveDeleteProduct()">
+                                <Icon name="carbon:trash-can" size="24" />
+                                <span class="text-sm font-semibold tracking-wide ">
+                                    Hapus
+                                </span>
+                            </TButton>
+                        </div>
+                </HeadlessDialogPanel>
+                </div>
+            </HeadlessDialog>
+        </ClientOnly>
+
+        <!-- modal for view detail -->
+        <ClientOnly>  
+            <HeadlessDialog :open="isOpenDetail == true" class="relative z-50">
+                <!-- The backdrop, rendered as a fixed sibling to the panel container -->
+                <div class="fixed inset-0 bg-black/80" aria-hidden="true" />
+
+                <!-- Full-screen container to center the panel -->
+                <div class="fixed inset-0 flex items-center justify-center p-4">
+                <!-- The actual dialog panel -->
+                <HeadlessDialogPanel class="w-full max-w-3xl px-12 py-8 rounded-lg bg-stone-100 text-gray-700">
+                    <HeadlessDialogTitle class="pb-3">
+                        <h3 class="text-xl font-semibold text-teal-600 border-b-2 pb-4">
+                            Detail Data Produk
+                        </h3>
+                    </HeadlessDialogTitle>
+                        
+                        <div class="grid grid-cols-2 pt-2 gap-x-4">
+                            <div class="flex flex-col items-start gap-4">
+                                
+                                <div class="pr-3">
+                                    <div class="pb-2">
+                                        <span class="text-xs py-1 px-2 font-semibold bg-sky-200 bg-opacity-30 text-sky-600 rounded-md">
+                                            {{ kode_produk }}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-base font-semibold tracking-wide">
+                                            {{ nama_produk }}
+                                        </span>
+                                    </div>
+                                    <span class="text-xs text-gray-400">
+                                        {{ nama_kategori }}
+                                    </span>
+                                </div>
+                                <nuxt-img :src="foto != '' ? urlHostApi + foto : '/img/placeholder.jpg'" alt="" class="w-40 aspect-[2/3] rounded-lg object-cover object-center " loading="lazy"/>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-y-4 items-start">
+                                <div class="flex flex-col justify-between h-40 px-4 py-3 border-2 rounded-lg">
+                                    <div class="flex items-start justify-between">
+                                        <p class="text-sm font-semibold text-sky-500">
+                                            <Icon name="carbon:tag" size="24" />
+                                        </p>
+                                        <p v-if="parseInt(harga_baru) > parseInt(harga_lama) && harga_lama != '' && parseInt(harga_lama) != 0" class="text-xs text-gray-500">
+                                            Naik : 
+                                            <span class="text-xs py-1 pl-2 pr-3 font-semibold rounded-md bg-teal-200 bg-opacity-30 text-teal-700"  >
+                                                <Icon name="carbon:chevron-up" size="20"/> Rp. {{ new Intl.NumberFormat().format(parseInt(priceGap)) }};-
+                                            </span>
+                                        </p>
+                                        <p v-if="parseInt(harga_baru) < parseInt(harga_lama)" class="text-xs text-gray-500">
+                                            Turun : 
+                                            <span class="text-xs py-1 pl-2 pr-3 font-semibold rounded-md bg-red-200 bg-opacity-30 text-red-700"  >
+                                                <Icon name="carbon:chevron-down" size="18"/> Rp. {{ new Intl.NumberFormat().format(parseInt(priceGap)) }};-
+                                            </span>
+                                        </p>
+                                        <p v-if="harga_lama == '' || parseInt(harga_lama) == 0" class="text-xs text-gray-500">
+                                            <span class="text-xs py-1 pl-2 pr-3 font-semibold rounded-md bg-yellow-200 bg-opacity-30 text-yellow-700"  >
+                                                Harga tidak berubah
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs tracking-wide">
+                                            Harga Terbaru
+                                        </p>
+                                        <h3 class="text-xl font-semibold border-b-2 pb-2">
+                                            Rp. {{ new Intl.NumberFormat().format(parseInt(harga_baru)) }};-
+                                        </h3>
+                                        <p class="text-xs text-gray-400 pt-2">
+                                            Harga lama : Rp. {{ new Intl.NumberFormat().format(parseInt(harga_lama)) }};-
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col justify-between h-40 px-4 py-3 border-2 rounded-lg">
+                                    <div class="flex items-start justify-between">
+                                        <p class="text-sm font-semibold text-sky-500">
+                                            <Icon name="carbon:layers" size="24" />
+                                        </p>
+                                        <p v-if="parseInt(stok_baru) > parseInt(stok_lama) && stok_lama != '' && parseInt(stok_lama) != 0" class="text-xs text-gray-500">
+                                            Bertambah : 
+                                            <span class="text-xs py-1 pl-2 pr-3 font-semibold rounded-md bg-teal-200 bg-opacity-30 text-teal-700"  >
+                                                <Icon name="carbon:chevron-up" size="20"/> {{ stokGap }} pcs
+                                            </span>
+                                        </p>
+                                        <p v-if="parseInt(stok_baru) < parseInt(stok_lama)" class="text-xs text-gray-500">
+                                            Berkurang : 
+                                            <span class="text-xs py-1 pl-2 pr-3 font-semibold rounded-md bg-red-200 bg-opacity-30 text-red-700"  >
+                                                <Icon name="carbon:chevron-down" size="18"/> {{ stokGap }} pcs
+                                            </span>
+                                        </p>
+                                        <p v-if="stok_lama == '' || parseInt(stok_lama) == 0" class="text-xs text-gray-500">
+                                            <span class="text-xs py-1 pl-2 pr-3 font-semibold rounded-md bg-yellow-200 bg-opacity-30 text-yellow-700"  >
+                                                Stok tidak berubah
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs tracking-wide">
+                                            Stok Terbaru
+                                        </p>
+                                        <div v-if="parseInt(stok_baru) >= 10" class="flex gap-x-4 items-end border-b-2 pb-2">
+                                            <p class="text-xl text-green-600 font-semibold">
+                                                {{ stok_baru }} <span class="font-light">pcs</span>
+                                            </p>
+                                            <p class="text-xs text-green-600">Stok aman > 10 pcs</p>
+                                        </div>
+                                        <div v-if="parseInt(stok_baru) < 10" class="flex gap-x-4 items-end border-b-2 pb-2">
+                                            <p class="text-xl text-red-600 font-semibold">
+                                                {{ stok_baru }} <span class="font-light">pcs</span>
+                                            </p>
+                                            <p class="text-xs text-red-600">Stok &lt; 10 pcs (bersiap order)</p>
+                                        </div>
+                                        <p class="text-xs text-gray-400 pt-2">
+                                            Stok lama : {{ stok_lama }} pcs
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+
+                        <div class="flex gap-x-2 justify-between border-t-2 pt-4 mt-6">
+                            <h3 class="text-sm pb-3">
+                                Update data terakhir : 
+                                <span class="text-xs py-1 px-2 font-semibold bg-gray-700 text-white rounded-md">
+                                    {{ convertUpdatedDate }}
+                                </span>
+                            </h3>
+                            <TButton @click="cancelDataProduct()">
+                                <Icon name="carbon:logout" size="24" />
+                                <span class="text-sm font-semibold tracking-wide ">
+                                    Keluar
+                                </span>
+                            </TButton>
+                        </div>
+                </HeadlessDialogPanel>
+                </div>
+            </HeadlessDialog>
+        </ClientOnly>
+
+        <!-- modal for choose category -->
+        <ClientOnly>  
+            <HeadlessDialog :open="isOpenCategory == true" class="relative z-50">
+                <!-- The backdrop, rendered as a fixed sibling to the panel container -->
+                <div class="fixed inset-0 bg-black/80" aria-hidden="true" />
+
+                <!-- Full-screen container to center the panel -->
+                <div class="fixed inset-0 flex items-center justify-center p-4">
+                <!-- The actual dialog panel -->
+                <HeadlessDialogPanel class="w-full max-w-2xl px-12 py-8 rounded-lg bg-stone-100 text-gray-700">
+                    <HeadlessDialogTitle class="pb-6">
+                        <h3 class="text-xl font-semibold text-sky-600 border-b-2 pb-4">
+                            Pilih Satu Kategori Produk
+                        </h3>
+                    </HeadlessDialogTitle>
+                    
+                        <HeadlessRadioGroup v-model="kategori_produk">
+                            <div class=" grid grid-cols-2 gap-5">
+                                <HeadlessRadioGroupOption
+                                    as="template"
+                                    v-for="item in categories"
+                                    :key="item.id"
+                                    :value="item.id"
+                                    v-slot="{ active, checked }"
+                                    @click = "chooseCategory(item)"
+                                >
+                                    <div
+                                    :class="[
+                                        
+                                        checked ? 'bg-sky-900 bg-opacity-75 text-white ' : 'bg-white ',
+                                    ]"
+                                    class="relative flex cursor-pointer rounded-lg px-5 py-4 shadow-md focus:outline-none"
+                                    >
+                                        <div class="flex w-full items-center justify-between">
+                                            <div class="flex items-center">
+                                                <div class="text-sm">
+                                                    <HeadlessRadioGroupDescription
+                                                    as="span"
+                                                    :class="checked ? 'text-sky-100' : 'text-gray-500'"
+                                                    class="inline text-xs"
+                                                    >
+                                                        <span> {{ item.kode_kategori }}</span>
+                                                    </HeadlessRadioGroupDescription>
+
+                                                    <HeadlessRadioGroupLabel
+                                                    as="p"
+                                                    :class="checked ? 'text-white' : 'text-gray-900'"
+                                                    class="font-medium text-sm"
+                                                    >
+                                                        {{ item.nama_kategori }}
+                                                    </HeadlessRadioGroupLabel>
+
+                                                </div>
+                                            </div>
+                                            <div v-show="checked" class="shrink-0 text-white">
+                                                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                                                    <circle
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="12"
+                                                    fill="#fff"
+                                                    fill-opacity="0.2"
+                                                    />
+                                                    <path
+                                                    d="M7 13l3 3 7-7"
+                                                    stroke="#fff"
+                                                    stroke-width="1.5"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </HeadlessRadioGroupOption>
+                            </div>
+                        </HeadlessRadioGroup>
+
+                        <div class="flex gap-x-2 justify-end border-t-2 pt-4 mt-6">
+                            
+                            <TButton @click="saveCategory()">
+                                <Icon name="carbon:save" size="24" />
+                                <span class="text-sm font-semibold tracking-wide ">
+                                    Simpan
+                                </span>
+                            </TButton>
+                        </div>
+                </HeadlessDialogPanel>
+                </div>
+            </HeadlessDialog>
+        </ClientOnly>
+
+    </div>
+</template>
+
+<script setup lang="ts">
+    import axios from 'axios';
+    import { stringify } from "querystring";
+
+    // ref data from pinia store in composable
+    const storeProduct = useProductStore()
+    const storeCategory = useCategoryStore()
+
+    const { 
+        products,
+        id,
+        kode_produk,
+        nama_produk,
+        kategori_produk,
+        harga_baru,
+        harga_lama,
+        stok_baru,
+        stok_lama,
+        foto,
+        createdAt,
+        updatedAt
+    } = storeToRefs(storeProduct)
+
+    const {
+        categories,
+        kode_kategori,
+        nama_kategori
+    } = storeToRefs(storeCategory)
+
+    
+    // top bar setting
+    const route = useRoute()
+    const storeMenu = useMenuStore()
+    const { menu } = storeToRefs(storeMenu)
+
+    const headMenu =  computed(() => { return menu.value.find(v => v.pathName == route.name)} )
+
+    // default API url set
+    const urlHostApi = 'http://localhost:8000/'
+
+    // ref for setting page
+    const loadingOverlay = ref(false)
+    const searchField = ref('');
+    const perPage = ref(0);
+    const currentPage = ref(0);
+    const pages = ref(0);
+    const totalData = ref(0);
+    const optionPages = ref(10);
+    const numShown = ref(5)
+    const isOpenAdd = ref(false);
+    const isOpenCategory =ref(false);
+    const isOpenDelete = ref(false);
+    const isOpenDetail = ref(false);
+    const file1 = ref();
+    const errMsg = ref('');
+    const btnEdit = ref(false);
+    const imgEdit = ref(false);
+    const convertCreatedDate = ref()
+    const convertUpdatedDate = ref()
+    const priceGap = ref()
+    const stokGap = ref()
+
+    // mounted first data
+    onMounted( async () => {
+        loadingOverlay.value = true
+        await fecthProduct()
+        await fecthCategory()
+    })
+
+    // fetching data
+    const fecthProduct = async () => {
+        await axios.post( `${urlHostApi}bengkel-api/api/produk/daftar`, {}, {
+        headers: {
+                "Content-Type": "multipart/form-data",
+                "Access-Control-Allow-Origin": "*"
+        }
+        })
+        .then( res => {
+            products.value = res.data.data
+            perPage.value = res.data.limit
+            currentPage.value = parseInt(res.data.page)
+            pages.value = Math.ceil(res.data.total_data/perPage.value)
+            totalData.value = parseInt(res.data.total_data)
+            searchField.value = res.data.search
+
+            setTimeout(() => loadingOverlay.value = false, 500)
+            
+            // console.log('first load data',{
+            //     'per' : perPage.value,
+            //     'page' : currentPage.value,
+            //     'pages' : pages.value,
+            //     'total' : totalData.value,
+            //     'search' : searchField.value,
+            // })
+        })
+        .catch( err => {
+            console.log({
+                message : err.message || "some error while retreiving category data.",
+                msg : `error fetch products process`
+            })
+        });
+    }
+
+    const fecthCategory = async () => {
+        await axios.post( `${urlHostApi}bengkel-api/api/kategori/daftar`, {}, {
+        headers: {
+                "Content-Type": "multipart/form-data",
+                "Access-Control-Allow-Origin": "*"
+        }
+        })
+        .then( res => {
+            categories.value = res.data.data
+
+            setTimeout(() => loadingOverlay.value = false, 500)
+            
+        })
+        .catch( err => {
+            console.log({
+                message : err.message || "some error while retreiving category data category.",
+                msg : `error fetch categories process`
+            })
+        });
+    }
+    
+    
+    // trigger function to fetch data table paginate and search
+    const clickPage = async (page : any, optionPages : any, search : any) => {
+        await axios.post( `${urlHostApi}bengkel-api/api/produk/daftar?page=${page}&limit=${optionPages}&search=${search}`, {}, {
+        headers: {
+                "Content-Type": "multipart/form-data",
+                "Access-Control-Allow-Origin": "*"
+        }
+        })
+        .then( res => {
+            scrollTop()
+            products.value = res.data.data
+            perPage.value = res.data.limit
+            currentPage.value = parseInt(res.data.page)
+            pages.value = Math.ceil(res.data.total_data/perPage.value)
+            totalData.value = parseInt(res.data.total_data)
+            searchField.value = res.data.search
+        })
+        .catch( err => {
+            console.log({
+                message : err.message || "some error while retreiving category data."
+            })
+        });
+    }
+
+    const searchData = async  ( page = 1, total : any, search : any) => {
+        if(search == '') page = 1, total = 10, optionPages.value = 10
+        await axios.post( `${urlHostApi}bengkel-api/api/produk/daftar?page=${page}&limit=${total}&search=${search}`, {}, {
+        headers: {
+                "Content-Type": "multipart/form-data",
+                "Access-Control-Allow-Origin": "*"
+        }
+        })
+        .then( res => {
+            products.value = res.data.data
+            perPage.value = parseInt(res.data.limit)
+            currentPage.value = parseInt(res.data.page)
+            pages.value = Math.ceil(res.data.total_data/perPage.value)
+            totalData.value = parseInt(res.data.total_data)
+            searchField.value = res.data.search
+            optionPages.value = 10
+        })
+        .catch( err => {
+            console.log({
+                message : err.message || "some error while retreiving category data."
+            })
+        });
+    }
+
+    // setting for paginate function
+    const scrollTop = () => {
+        let currentScroll = document.documentElement.scrollTop
+        let int = setInterval(frame, 6)
+
+        function frame() {
+            if(0 > currentScroll)
+                clearInterval(int)
+            else {
+                currentScroll = currentScroll - 12
+                document.documentElement.scrollTop = currentScroll
+            }
+        }
+    }
+
+    const displayPages = computed (() => {
+        const showNumber = Math.min(numShown.value, pages.value);
+        let first = currentPage.value - Math.floor(showNumber / 2);
+        first = Math.max(first, 1);
+        first = Math.min(first, pages.value - showNumber + 1);
+        return [...Array(showNumber)].map((k,i) => i + first);
+    })
+
+    // setting for modal function
+    function openModalAdd() {
+        loadingOverlay.value = true
+        setTimeout(() => {loadingOverlay.value = false, isOpenAdd.value = true}, 300)
+    }
+
+    const openModalCategory = ( async () => {
+        loadingOverlay.value = true
+        await fecthCategory()
+        setTimeout( () => {
+            loadingOverlay.value = false
+            isOpenCategory.value = true
+        }, 300)
+    })
+
+    const chooseCategory = ((item : any) => {
+        nama_kategori.value = item.nama_kategori
+        kode_kategori.value = item.kode_kategori
+    })
+
+    const saveCategory = (() => {
+        loadingOverlay.value = true
+        setTimeout( () => {
+            loadingOverlay.value = false
+            isOpenCategory.value = false
+        }, 300)
+    })
+
+    const selectFoto = ((e : any) => {
+        const imageChoose = file1.value.files.item(0)
+        if (imageChoose == null){
+            foto.value = ''
+        } else {
+            foto.value = imageChoose
+        }
+        
+    })
+
+    const cancelDataProduct = ( async () => {
+        await fecthProduct()
+        loadingOverlay.value = true
+        errMsg.value = "focus"
+        setTimeout( () => {
+            isOpenAdd.value = false
+            isOpenDelete.value = false
+            isOpenDetail.value = false
+            btnEdit.value = false
+            imgEdit.value = false
+            nama_produk.value = ''
+            harga_baru.value = ''
+            harga_lama.value = ''
+            stok_baru.value = ''
+            stok_lama.value = ''
+            kategori_produk.value = ''
+            foto.value = ''
+            kode_kategori.value = ''
+            nama_kategori.value = ''
+            createdAt.value = ''
+            updatedAt.value = ''
+            convertCreatedDate.value = ''
+            convertUpdatedDate.value = ''
+            loadingOverlay.value = false
+        }, 300)
+    })
+
+    // setting and trigger for CRUD data
+
+    //insert
+    const saveDataProduct = ( async () => {
+        loadingOverlay.value = true
+        await axios.post(`${urlHostApi}bengkel-api/api/produk/simpan`, {
+            nama_produk : nama_produk.value,
+            harga_baru : harga_baru.value,
+            harga_lama : 0,
+            stok_baru : stok_baru.value,
+            stok_lama : 0,
+            kategori_produk : kategori_produk.value,
+            foto : foto.value
+        }, {
+            headers: {
+                    "Content-Type": "multipart/form-data",
+                    "Access-Control-Allow-Origin": "*"
+            }
+        })
+        .then( async (res) => {
+            await fecthProduct()
+            setTimeout( () => {
+                isOpenAdd.value = false
+                nama_produk.value = ''
+                harga_baru.value = ''
+                harga_lama.value = ''
+                stok_baru.value = ''
+                stok_lama.value = ''
+                kategori_produk.value = ''
+                foto.value = ''
+                kode_kategori.value = ''
+                nama_kategori.value = ''
+                createdAt.value = ''
+                updatedAt.value = ''
+                convertCreatedDate.value = ''
+                convertUpdatedDate.value = ''
+                loadingOverlay.value = false
+            }, 300)
+        })
+        .catch( err => {
+            console.log({error : err.message, msg : `error insert process`})
+            errMsg.value = "live"
+            setTimeout( () => {
+                loadingOverlay.value = false
+            }, 300)
+        })
+    })
+
+    //update 
+    const openModalEdit = ((item : any) => {
+        loadingOverlay.value = true
+        btnEdit.value = true
+        imgEdit.value = true
+        id.value = item.id
+        nama_produk.value = item.nama_produk 
+        harga_baru.value = item.harga_baru
+        harga_lama.value = item.harga_lama
+        stok_baru.value = item.stok_baru
+        stok_lama.value = item.stok_lama
+        kategori_produk.value = item.kategori_produk != null ? item.kategori_produk._id : ''
+        foto.value = item.foto
+        kode_kategori.value =  item.kategori_produk != null ? item.kategori_produk.kode_kategori : ''
+        nama_kategori.value =  item.kategori_produk != null ? item.kategori_produk.nama_kategori : ''
+        setTimeout(() => {loadingOverlay.value = false, isOpenAdd.value = true}, 300)
+    })
+
+    const saveEditProduct = ( async () => {
+        loadingOverlay.value = true
+
+        await axios.post(`${urlHostApi}bengkel-api/api/produk/detail`, {
+            id : id.value,
+        }, {
+            headers: {
+                    "Content-Type": "multipart/form-data",
+                    "Access-Control-Allow-Origin": "*"
+            }
+        })
+        .then( async (r) => {
+
+            if(harga_baru.value != r.data.harga_baru) harga_lama.value = r.data.harga_baru
+                console.log({
+                    new : harga_baru.value,
+                    old : harga_lama.value
+                })
+            if(stok_baru.value != r.data.stok_baru) stok_lama.value = r.data.stok_baru
+                console.log({
+                    new : stok_baru.value,
+                    old : stok_lama.value
+                })
+            
+            await axios.post(`${urlHostApi}bengkel-api/api/produk/update`, {
+                id : id.value,
+                nama_produk : nama_produk.value,
+                kategori_produk : kategori_produk.value,
+                harga_baru : harga_baru.value,
+                harga_lama : harga_lama.value,
+                stok_baru : stok_baru.value,
+                stok_lama : stok_lama.value,
+                foto : foto.value
+            }, {
+                headers: {
+                        "Content-Type": "multipart/form-data",
+                        "Access-Control-Allow-Origin": "*"
+                }
+            })
+            .then( async (res) => {
+                // console.log({system : res.data.message, pesan : 'data terupdate'})
+                await fecthProduct()
+
+                setTimeout( () => {
+                    isOpenAdd.value = false
+                    btnEdit.value = false
+                    imgEdit.value = false
+                    nama_produk.value = ''
+                    harga_baru.value = ''
+                    harga_lama.value = ''
+                    stok_baru.value = ''
+                    stok_lama.value = ''
+                    kategori_produk.value = ''
+                    foto.value = ''
+                    kode_kategori.value = ''
+                    nama_kategori.value = ''
+                    createdAt.value = ''
+                    updatedAt.value = ''
+                    convertCreatedDate.value = ''
+                    convertUpdatedDate.value = ''
+                    loadingOverlay.value = false
+
+                }, 300)
+            })
+            .catch( err => {
+                console.log({error : err.message, msg : `error update process`})
+                errMsg.value = "live"
+                setTimeout( () => {
+                    loadingOverlay.value = false
+                }, 300)
+            })
+            
+        })
+        .catch( err => {
+            console.log({error : err.message, msg : `error update process`})
+            errMsg.value = "live"
+            setTimeout( () => {
+                loadingOverlay.value = false
+            }, 300)
+        })
+    })
+
+    //delete
+    const openModalDelete = ((item : any) => {
+        loadingOverlay.value = true
+        id.value = item.id
+        kode_produk.value = item.kode_produk
+        nama_produk.value = item.nama_produk
+        foto.value = item.foto
+        setTimeout(() => {loadingOverlay.value = false, isOpenDelete.value = true}, 300)
+    })
+
+    const saveDeleteProduct = ( async () => {
+        loadingOverlay.value = true
+        await axios.post(`${urlHostApi}bengkel-api/api/produk/hapus`, {
+            id : id.value
+        }, {
+        headers: {
+                "Content-Type": "multipart/form-data",
+                "Access-Control-Allow-Origin": "*"
+        }
+        })
+        .then( async (res) => {
+            // console.log({system : res.data.msg, msg : 'data terhapus'})
+            await fecthProduct()
+            setTimeout( () => {
+                isOpenDelete.value = false
+                nama_produk.value = ''
+                harga_baru.value = ''
+                harga_lama.value = ''
+                stok_baru.value = ''
+                stok_lama.value = ''
+                kategori_produk.value = ''
+                foto.value = ''
+                kode_kategori.value = ''
+                nama_kategori.value = ''
+                createdAt.value = ''
+                updatedAt.value = ''
+                convertCreatedDate.value = ''
+                convertUpdatedDate.value = ''
+                loadingOverlay.value = false
+            }, 300)
+        })
+        .catch( err => {
+            console.log({error : err.message, msg : `error delete process`})
+            setTimeout( () => {
+                loadingOverlay.value = false
+            }, 300)
+        })
+    })
+
+    // detail
+    const openModalDetail = ((item : any) => {
+        loadingOverlay.value = true
+        btnEdit.value = true
+        imgEdit.value = true
+        id.value = item.id
+        kode_produk.value = item.kode_produk
+        nama_produk.value = item.nama_produk 
+        harga_baru.value = item.harga_baru
+        harga_lama.value = item.harga_lama
+        stok_baru.value = item.stok_baru
+        stok_lama.value = item.stok_lama
+        kategori_produk.value = item.kategori_produk != null ? item.kategori_produk._id : ''
+        foto.value = item.foto
+        kode_kategori.value =  item.kategori_produk != null ? item.kategori_produk.kode_kategori : ''
+        nama_kategori.value =  item.kategori_produk != null ? item.kategori_produk.nama_kategori : ''
+
+        const countGap = parseInt(harga_baru.value) - parseInt(harga_lama.value)
+        priceGap.value = countGap
+
+        const countStokGap = parseInt(stok_baru.value) - parseInt(stok_lama.value)
+        stokGap.value = countStokGap
+        
+        const dateCreate = new Date( item.createdAt )
+        const dateUpdate = new Date( item.updatedAt )
+
+        convertCreatedDate.value = dateCreate.toLocaleString('id-ID')
+        convertUpdatedDate.value = dateUpdate.toLocaleString('id-ID')
+        
+        setTimeout(() => {loadingOverlay.value = false, isOpenDetail.value = true}, 300)
+    })
+</script>
+
+<style scoped>
+</style>
