@@ -152,11 +152,44 @@
             <div class="">
                 <div  class="flex flex-col">
                     <h3 class="text-base font-semibold tracking-wide">
-                        5 Transaksi terakhir
+                        5 Transaksi supplier terakhir
                     </h3>
                     <span class="w-10 pb-1 mb-2 border-b-2 border-yellow-500"></span>
-                    <div class="bg-blue-500">
-                        hahaha
+                    <div class="flex flex-col gap-y-1">
+                        <div v-for="(item, index) in transaksi.slice(0, 5)" :key="index" class="flex flex-col justify-between h-30 px-3 py-3 border-2 rounded-lg transition ease-in-out hover:border-teal-500">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs font-semibold">
+                                    {{ item.supplier.nama_supplier }}
+                                    
+                                </p>
+                                <p class="text-xs text-gray-500">
+                                    <span class="text-xs py-1 pl-2 pr-3 font-semibold rounded-md bg-teal-200 bg-opacity-30 text-teal-700"  >
+                                        {{ item.kode_transaksi }}
+                                    </span>
+                                </p>
+                            </div>
+                            
+                            <div class="flex gap-x-4 pt-3">
+                                <p class="text-sm font-semibold pr-4 border-r-2">
+                                    {{ item.detail.trx_produk.length }} Produk
+                                </p>
+                                <p class="text-sm" >
+                                    Total :
+                                        <span class="font-semibold">
+                                            <ClientOnly>
+                                                Rp. {{new Intl.NumberFormat().format(item.total)}};-
+                                            </ClientOnly>
+                                        </span>
+                                </p>
+                            </div>
+                            <div class="pt-3">
+                                <span class="text-xs py-1 px-2 font-semibold rounded-md bg-gray-800 text-white" >
+                                    <ClientOnly>
+                                        {{ new Date(item.createdAt).toLocaleString('id-ID') }}
+                                    </ClientOnly>
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -196,6 +229,37 @@
         nama_kategori
     } = storeToRefs(storeCategory)
 
+    // store transaction
+   const storeTransaction = useTransactionStore()
+
+    const { 
+        transaksi,
+        detail_transaksi,
+        detail_transaksi_temp,
+        id_transaksi,
+        kode_transaksi,
+        detail,
+        supplier,
+        total,
+        catatan,
+        kode_detail_trx,
+        trx_produk,
+        trx_kode,
+        trx_nama,
+        trx_harga,
+        trx_jumlah,
+        trx_subtotal,
+        total_trx,
+        kode_key_temp,
+        kode_detail_temp,
+        produk,
+        harga_tmp,
+        jumlah_tmp,
+        subtotal_tmp,
+        createdAtTrx,
+        updatedAtTrx,
+    } = storeToRefs(storeTransaction)
+
     
     // top bar setting
     const route = useRoute()
@@ -211,6 +275,7 @@
     const loadingOverlay = ref(false)
 
     const totalData = ref(0);
+    const totalDataTrx = ref(0);
     const minStok = ref(0);
     const safeStok = ref(0);
     
@@ -220,6 +285,7 @@
         loadingOverlay.value = true
         await fecthProduct()
         await fecthCategory()
+        await fecthAllTransaction()
     })
 
     // fetching data
@@ -274,6 +340,28 @@
             console.log({
                 message : err.message || "some error while retreiving category data category.",
                 msg : `error fetch categories process`
+            })
+        });
+    }
+
+    // fetching data
+    const fecthAllTransaction = async () => {
+        await axios.post( `${urlHostApi}bengkel-api/api/transaksi/all`, {}, {
+        headers: {
+                "Content-Type": "multipart/form-data",
+                "Access-Control-Allow-Origin": "*"
+        }
+        })
+        .then( res => {
+            transaksi.value = res.data.data
+            totalDataTrx.value = parseInt(res.data.total_data)
+            setTimeout(() => loadingOverlay.value = false, 500)
+            
+        })
+        .catch( err => {
+            console.log({
+                message : err.message || "some error while retreiving category data.",
+                msg : `error fetch transaksi process`
             })
         });
     }

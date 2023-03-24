@@ -10,7 +10,7 @@ export const useTransactionStore = defineStore('TransactionStore', {
         total: '',
         catatan: '',
         kode_detail_trx: '',
-        trx_produk: '',
+        trx_produk: [] as any[],
         trx_kode : '',
         trx_nama : '',
         trx_harga : '',
