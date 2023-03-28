@@ -399,7 +399,7 @@ import { e } from 'ofetch/dist/error-04138797';
     const headMenu =  computed(() => { return menu.value.find(v => v.pathName == route.name)} )
 
     // default API url set
-    const urlHostApi = 'http://localhost:8000/'
+    const urlHostApi = 'http://167.99.28.7:8000/'
 
     // ref for setting page
     const loadingOverlay = ref(false)
