@@ -879,7 +879,7 @@
     kode_key_temp.value = paramsId.toString()
 
     // default API url set
-    const urlHostApi = 'http://167.99.28.7:8000/'
+    const urlHostApi = 'https://permata-api.enterbiner.com/'
 
     // ref for setting page
     const loadingOverlay = ref(false)
